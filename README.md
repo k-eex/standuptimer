@@ -2,7 +2,7 @@
 
 Small app to track time spent during standups.
 
-The idea is to share the screen using Teams or other collaboration software so that everyone is aware where the time was spent.
+The idea is to share the app window using Teams or other collaboration software so that everyone is aware where the time was spent.
 
 Features:
   - Assumes that meetings start on 15-minute boundaries. Tracks time before first speaker up to previous 15-minute period start.
