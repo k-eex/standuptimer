@@ -32,7 +32,7 @@ Configuration:
 
 Running
 
-  - Execute: python daily-sum-timer.python
+  - Execute: python daily-sum-timer.py
   - Start sharing your screen (single window sharing preferable)
 
 Using
