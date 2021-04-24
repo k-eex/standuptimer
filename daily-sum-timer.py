@@ -461,6 +461,20 @@ class Panel(wx.Panel):
                 self.set_missing_del()
             elif e.RightUp():
                 self.OnShowPopup(e)
+            elif e.WheelRotation != 0:
+                # transfer time between previous topic and this topic
+                if e.ControlDown():
+                    n = e.WheelRotation//e.WheelDelta
+                    a = self.master.agenda
+                    curIndex = a.IndexOf(self.topic)
+                    if curIndex > 0:
+                        prev = a[curIndex-1]
+                        if prev.topic.Elapsed + n >= 0 and self.topic.Elapsed - n >= 0:
+                            prev.topic.Adjust(n)
+                            self.topic.Adjust(-n)
+                            prev.update()
+                            self.update()
+
         def activate_or_pause(self, e=None):
             if self.master.Topic is self:
                 self.master.toggle_pause()
@@ -733,11 +747,16 @@ class Topic(object):
         self.stopwatch = wx.StopWatch()
         self.stopwatch.Pause()
         self.transient = False
+        self.adjustment = 0
     
     def Reset(self, seconds=0):
+        self.adjustment = 0
         self.stopwatch.Start(milliseconds=seconds*1000)
         self.stopwatch.Pause()
         self._running = False
+
+    def Adjust(self, seconds):
+        self.adjustment += seconds
 
     @property 
     def Running(self):
@@ -754,7 +773,7 @@ class Topic(object):
 
     @property 
     def Elapsed(self):
-        return self.stopwatch.Time() / 1000.
+        return int(self.stopwatch.Time() / 1000.) + self.adjustment
 
     @Elapsed.setter
     def Elapsed(self, value):
