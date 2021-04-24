@@ -8,6 +8,11 @@ import yaml
 fontface = "Bernard MT Condensed"
 fontFactor = 1.0
 
+def alignTimestamp(t, alignMinutes):
+    t.minute -= t.minute % alignMinutes
+    t.second,t.millisecond = 0,0
+    return t
+
 class Window(wx.Frame):
     def __init__(self):
         size = (1024,768)
@@ -50,11 +55,14 @@ class Window(wx.Frame):
                 self.p.Refresh()
 
 def format_sec(sec):
+    neg, sec = sec < 0, abs(sec)
     min, sec = divmod(sec, 60)
     if min < 60:
-        return "%02d:%02d" % (min, sec)
-    hour, min = divmod(min, 60)
-    return "%d:%02d:%02d" % (hour, min, sec)
+        ret = "%02d:%02d" % (min, sec)
+    else:
+        hour, min = divmod(min, 60)
+        ret = "%d:%02d:%02d" % (hour, min, sec)
+    return ("-" + ret) if neg else ret
 
 class Panel(wx.Panel):
     class Timer(wx.Panel):
@@ -67,11 +75,14 @@ class Panel(wx.Panel):
             self.font = wx.Font(40*fontFactor,wx.SWISS,wx.NORMAL,wx.NORMAL,False,fontface)
             self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
             self.Bind(wx.EVT_PAINT, self.paint)
-            self.Bind(wx.EVT_MOUSE_EVENTS, self.master.parent.mouse)
+            self.Bind(wx.EVT_LEFT_DCLICK, lambda e:self.master.toggle_pause())
+            self.Bind(wx.EVT_RIGHT_DCLICK, lambda e:self.master.exit())
             self.timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, lambda e:self.Refresh(), self.timer)
             self.timer.Start(50)
             self.lastText = ""
+            self.popupmenu = wx.Menu()
+            self.Bind(wx.EVT_CONTEXT_MENU, self.onShowPopup)
 
 
         def paint(self, e):
@@ -110,6 +121,57 @@ class Panel(wx.Panel):
                 
         def update(self, e=None):
             val = self.format()
+
+        class Popup(wx.Menu):
+            def __init__(self):
+                super().__init__()
+
+        def onShowPopup(self, e, pos=None):
+            # pos = wx.GetMousePosition()
+            # pos = self.ScreenToClient(pos)
+
+            for m in self.popupmenu.MenuItems:
+                self.popupmenu.DestroyItem(m.Id)
+
+            now = wx.DateTime(); now.SetToCurrent()
+            def T(dt, align):
+                dt = alignTimestamp(wx.DateTime(dt), align)
+                return (dt.hour, dt.minute)
+
+            menuitem = self.popupmenu.AppendCheckItem(-1, "Pause")
+            menuitem.Check(self.master.Topic.state == "paused")
+            self.Bind(wx.EVT_MENU, lambda e:self.master.toggle_pause(), menuitem)
+
+            if self.master.Topic is self.master.agenda[0]:
+                times = {
+                    T(now, 1),
+                    T(now + wx.TimeSpan(0, min=1), 1),
+                    T(now - wx.TimeSpan(0, min=5), 5), 
+                    T(now - wx.TimeSpan(0, min=10), 5),
+                    T(now, 5),
+                    T(now, 10),
+                    T(now, 15),
+                    T(now, 30),
+                    T(now, 60),
+                    T(now + wx.TimeSpan(0, min=5), 5),
+                    T(now + wx.TimeSpan(0, min=10), 10),
+                    T(now + wx.TimeSpan(0, min=15), 15),
+                    T(now + wx.TimeSpan(0, min=30), 30),
+                }
+                times = list(times)
+                times.sort()
+
+                self.popupmenu.AppendSeparator()
+                for t in times:
+                    menuitem = self.popupmenu.Append(-1, ("%02d:%02d" % t))
+                    self.Bind(wx.EVT_MENU, lambda e,t=t:self.setStartTime(e, t), menuitem)
+
+            self.PopupMenu(self.popupmenu)
+
+        def setStartTime(self, e, t):
+            dt = wx.DateTime.Today()
+            dt.hour,dt.minute = t
+            self.master.ResetTopicStartTime(dt)
 
     class Agenda(wx.Panel):
         ITEM_FLAGS = wx.EXPAND + wx.RESERVE_SPACE_EVEN_IF_HIDDEN
@@ -455,13 +517,11 @@ class Panel(wx.Panel):
 
         self.set_topic(self.agenda[0])
 
-        t1,t2 = wx.DateTime(),wx.DateTime()
-        t1.SetToCurrent(),t2.SetToCurrent()
-        t1.minute -= t1.minute % 15
-        t1.second = 0
-        t1.millisecond = 0
-        dt = t2.Subtract(t1)
-        self.Topic.topic.Reset(dt.GetSeconds())
+        prev15MinBoundary = wx.DateTime()
+        prev15MinBoundary.SetToCurrent()
+        prev15MinBoundary += wx.TimeSpan(0, min=2)
+        alignTimestamp(prev15MinBoundary, 15)
+        self.ResetTopicStartTime(prev15MinBoundary)
         self.Topic.topic.Running = True
 
         self.agenda.grid.Fit(self.agenda)
@@ -474,6 +534,13 @@ class Panel(wx.Panel):
 
         self.Bind(wx.EVT_PAINT, self.onPaint)
 
+    def ResetTopicStartTime(self, t):
+        running = self.Topic.topic.Running
+        now = wx.DateTime()
+        now.SetToCurrent()
+        dt = now.Subtract(t)
+        self.Topic.topic.Reset(dt.GetSeconds())
+        self.Topic.topic.Running = running
 
     @property
     def Topic(self):
