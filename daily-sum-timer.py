@@ -131,9 +131,6 @@ class Panel(wx.Panel):
                 super().__init__()
 
         def onShowPopup(self, e, pos=None):
-            # pos = wx.GetMousePosition()
-            # pos = self.ScreenToClient(pos)
-
             for m in self.popupmenu.MenuItems:
                 self.popupmenu.DestroyItem(m.Id)
 
@@ -588,14 +585,12 @@ class Panel(wx.Panel):
                 y = self.Size.Height - self.agenda.Size.Height
             if y <= 30:
                 oldWidth = self.agenda.Size.Width
-                print(self.agenda.Position.y,self.agenda.Position.y+self.agenda.Size.Height,self.Size.Height)
                 self.grid_font.MakeSmaller()
                 for t in self.agenda.items:
                     t.UpdateFont()
                 self.agenda.grid.Fit(self.agenda)
                 self.agenda.Layout()
                 self.agenda.Size = (oldWidth, self.agenda.Size.Height)
-                print(self.agenda.Position.y,self.agenda.Position.y+self.agenda.Size.Height,self.Size.Height)
             else:
                 break
         if y < self.agenda.Position.y:
@@ -683,7 +678,6 @@ class Panel(wx.Panel):
         items = list(self.agenda.items)
         for i,ii in enumerate(transpose):
             self.relocate_topic(items[ii],i)
-        print(transpose)
 
     def exit(self, e=None):
         # machine-readable (raw seconds)
@@ -707,16 +701,13 @@ class Panel(wx.Panel):
                 yaml.dump(out, outf)
         except OSError as e:
             print(e)
-        #print(json.dumps(out))
         sys.exit()
 
     def onPaint(self, e):
         dc = wx.PaintDC(self)
 
         dc.Pen = wx.Pen("BLACK", 0, wx.PENSTYLE_TRANSPARENT)
-        #dc.Brush = wx.Brush(wx.Colour(55,55,55))
         dc.Brush = wx.TRANSPARENT_BRUSH
-        #dc.DrawRectangle(4,4,self.Size.Width-8,32)
 
         gc = wx.GraphicsContext.Create(dc)
         gc.SetBrush(gc.CreateLinearGradientBrush(0, 0, self.Size.Width/2, 0, wx.Colour(55,55,55), self.parent.BackgroundColour))
@@ -731,7 +722,6 @@ class Panel(wx.Panel):
             dc.Pen = wx.Pen(wx.Colour(130,30,30),1)
         else:
             dc.Pen = wx.Pen(wx.Colour(0,0,0),1)
-        #dc.Brush = wx.Brush(self.parent.BackgroundColour)
         p = self.exit_pos
         dc.DrawCircle(p,8)
         dc.DrawLine(p,p+wx.Point(6,6))
