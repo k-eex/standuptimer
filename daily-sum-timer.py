@@ -4,6 +4,7 @@ import random
 import datetime
 import json
 import yaml
+import signal
 
 fontface = "Bernard MT Condensed"
 fontFactor = 1.0
@@ -12,6 +13,9 @@ def alignTimestamp(t, alignMinutes):
     t.minute -= t.minute % alignMinutes
     t.second,t.millisecond = 0,0
     return t
+
+def ctrl_c_handler(sig, frame):
+    main.p.exit()
 
 class Window(wx.Frame):
     def __init__(self):
@@ -839,9 +843,11 @@ topics = [Topic("Waiting to start")] + \
 if __name__ == "__main__":
     random.seed()
     app = wx.App(False)
+    global main
     main = Window()
     main.SetSize((1024,668))
     center = wx.Point(wx.DisplaySize()) / 2
     main.Move(center - main.Size / 2 ) #- wx.Point(200,0))
     main.Show()
+    signal.signal(signal.SIGINT, ctrl_c_handler)
     app.MainLoop()
